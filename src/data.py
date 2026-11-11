@@ -4,6 +4,8 @@ from sklearn.preprocessing import StandardScaler
 
 RAW = "data/raw"
 
+DROP = ["TransactionID", "isFraud", "TransactionDT", "entity_id", "day", "snap"]
+
 def load_merged():
     tx = pd.read_csv(f"{RAW}/train_transaction.csv")
     idt = pd.read_csv(f"{RAW}/train_identity.csv")
@@ -11,23 +13,20 @@ def load_merged():
     df["has_identity"] = df["DeviceType"].notna().astype(int)
     return df
 
-def add_entity_id(df):
+def add_entity_id(df, n_snaps=15):
     key_cols = ["card1", "card2", "card3", "card4", "card5", "card6", "addr1"]
     key = df[key_cols[0]].astype("string").fillna("NA")
     for c in key_cols[1:]:
         key = key + "_" + df[c].astype("string").fillna("NA")
     df["entity_id"] = pd.factorize(key)[0]
     df["day"] = (df["TransactionDT"] // 86400).astype(int)
+    t = df["TransactionDT"]
+    df["snap"] = ((t - t.min()) / (t.max() - t.min() + 1) * n_snaps).astype(int)  # 0..14
     return df
 
 
-DROP = ["TransactionID", "isFraud", "TransactionDT", "entity_id", "day"]
-
-def chrono_split(df, train_frac=0.7):
-    cutoff = df["TransactionDT"].quantile(train_frac)
-    train = df[df["TransactionDT"] <= cutoff].copy()
-    test = df[df["TransactionDT"] > cutoff].copy()
-    return train, test
+def chrono_split(df, n_train_snaps=10):
+    return df[df["snap"] < n_train_snaps].copy(), df[df["snap"] >= n_train_snaps].copy()
 
 def preprocess(train, test, max_missing=0.5):
     feats = [c for c in train.columns if c not in DROP]
