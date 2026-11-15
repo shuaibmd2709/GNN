@@ -4,7 +4,7 @@ import pandas as pd
 from src.data import load_merged, add_entity_id
 from src.graph import entity_table, select_nodes, N_SNAPS
 
-CAP = 20  # DESIGN CHOICE: skip key values shared by more than 20 nodes (too generic)
+CAPS = {"email_addr": 6, "browser_os_res": 20, "device": 20}  # DESIGN CHOICE: per-key group-size cap
 
 def link_keys(df):
     k = pd.DataFrame(index=df.index)
@@ -21,12 +21,12 @@ def build_edges(df, ids):
     sub = df[df.entity_id.isin(ids)]
     keys = link_keys(sub)
     sub = pd.concat([sub[["entity_id", "snap"]], keys], axis=1)
-    edges = {s: {} for s in range(N_SNAPS)}      # snap -> {(i, j): {key types}}
+    edges = {s: {} for s in range(N_SNAPS)}     
     for kname in keys.columns:
         t = sub[["entity_id", "snap", kname]].dropna().drop_duplicates()
         for (s, v), g in t.groupby(["snap", kname]):
             nodes = sorted(node_of[e] for e in g.entity_id)
-            if 2 <= len(nodes) <= CAP:
+            if 2 <= len(nodes) <= CAPS[kname]:
                 for i, j in itertools.combinations(nodes, 2):
                     edges[s].setdefault((i, j), set()).add(kname)
     return node_of, edges
@@ -34,7 +34,7 @@ def build_edges(df, ids):
 def label_matrix(df, node_of):
     sub = df[df.entity_id.isin(node_of)]
     ns = sub.groupby(["snap", "entity_id"])["isFraud"].max().reset_index()
-    Y = np.full((N_SNAPS, len(node_of)), -1, dtype=int)   # -1 = node inactive
+    Y = np.full((N_SNAPS, len(node_of)), -1, dtype=int)  
     Y[ns.snap.values, ns.entity_id.map(node_of).values] = ns.isFraud.values
     return Y
 

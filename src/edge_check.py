@@ -3,18 +3,19 @@ import pandas as pd
 from src.data import load_merged, add_entity_id
 from src.graph import entity_table, select_nodes, N_SNAPS
 from src.edges import build_edges, label_matrix
+from src.graph import N_TRAIN
 
 if __name__ == "__main__":
     df = add_entity_id(load_merged())
     _, ids = select_nodes(df, entity_table(df))
     node_of, edges = build_edges(df, ids)
     Y = label_matrix(df, node_of)
-    base = (Y == 1).sum() / (Y >= 0).sum()
+    base = (Y[:N_TRAIN] == 1).sum() / (Y[:N_TRAIN] >= 0).sum()
 
     rows = []
     for kind in ["email_addr", "browser_os_res", "device"]:
         src, dst, snp = [], [], []
-        for s in range(N_SNAPS):
+        for s in range(N_TRAIN):
             for (i, j), ks in edges[s].items():
                 if kind in ks:
                     src += [i, j]; dst += [j, i]; snp += [s, s]

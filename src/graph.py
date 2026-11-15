@@ -3,8 +3,8 @@ import pandas as pd
 from src.data import load_merged, add_entity_id
 
 N_SNAPS, N_TRAIN, N_NODES = 15, 10, 5000
-MIN_TX, MAX_TX = 3, 300      # DESIGN CHOICE: drop one-off cards and hub-like keys
-POS_BOOST = 0.5              # >0 oversamples entities that ever had fraud
+MIN_TX, MAX_TX = 3, 300      
+POS_BOOST = 0.5              
 SEED = 42
 
 def entity_table(df):
